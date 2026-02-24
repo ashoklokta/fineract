@@ -65,14 +65,14 @@ public class GLAccountReadPlatformServiceImpl implements GLAccountReadPlatformSe
         public String schema() {
             StringBuilder sb = new StringBuilder();
             sb.append(
-                    " gl.id as id, name as name, parent_id as parentId, gl_code as glCode, disabled as disabled, manual_journal_entries_allowed as manualEntriesAllowed, ")
-                    .append("classification_enum as classification, account_usage as accountUsage, gl.description as description, ")
+                    " gl.id as id, gl.name as name, gl.parent_id as parentId, gl.gl_code as glCode, gl.disabled as disabled, gl.manual_journal_entries_allowed as manualEntriesAllowed, ")
+                    .append("gl.classification_enum as classification, gl.account_usage as accountUsage, gl.description as description, ")
                     .append(NAME_DECORATED_BASE_ON_HIERARCHY).append(" as nameDecorated, ")
                     .append("cv.id as codeId, cv.code_value as codeValue ");
             if (this.associationParametersData.isRunningBalanceRequired()) {
                 sb.append(",gl_j.organization_running_balance as organizationRunningBalance ");
             }
-            sb.append("from acc_gl_account gl left join m_code_value cv on tag_id=cv.id ");
+            sb.append("from acc_gl_account gl left join m_code_value cv on gl.tag_id=cv.id ");
             if (this.associationParametersData.isRunningBalanceRequired()) {
                 sb.append("left outer Join acc_gl_journal_entry gl_j on gl_j.account_id = gl.id");
             }

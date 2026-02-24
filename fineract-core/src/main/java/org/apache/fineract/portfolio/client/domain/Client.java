@@ -187,6 +187,9 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @Column(name = "default_savings_account")
     private Long savingsAccountId;
 
+    @Column(name = "default_recurring_deposit_product")
+    private Long recurringDepositProductId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_type_cv_id")
     private CodeValue clientType;
@@ -610,6 +613,14 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
 
     public void updateSavingsAccount(Long savingsAccountId) {
         this.savingsAccountId = savingsAccountId;
+    }
+
+    public Long recurringDepositProductId() {
+        return this.recurringDepositProductId;
+    }
+
+    public void updateRecurringDepositProduct(final Long recurringDepositProductId) {
+        this.recurringDepositProductId = recurringDepositProductId;
     }
 
     public Long genderId() {

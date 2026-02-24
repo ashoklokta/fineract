@@ -45,7 +45,10 @@ import org.apache.fineract.portfolio.client.data.ClientData;
 import org.apache.fineract.portfolio.client.data.ClientFamilyMembersData;
 import org.apache.fineract.portfolio.client.domain.ClientEnumerations;
 import org.apache.fineract.portfolio.client.domain.LegalForm;
+import org.apache.fineract.portfolio.savings.data.DepositProductData;
 import org.apache.fineract.portfolio.savings.data.SavingsProductData;
+import org.apache.fineract.portfolio.savings.DepositAccountType;
+import org.apache.fineract.portfolio.savings.service.DepositProductReadPlatformService;
 import org.apache.fineract.portfolio.savings.service.SavingsProductReadPlatformService;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -59,6 +62,7 @@ public class ClientTemplateReadPlatformServiceImpl implements ClientTemplateRead
     private final StaffReadPlatformService staffReadPlatformService;
     private final CodeValueReadPlatformService codeValueReadPlatformService;
     private final SavingsProductReadPlatformService savingsProductReadPlatformService;
+    private final DepositProductReadPlatformService depositProductReadPlatformService;
     // data mappers
     private final EntityDatatableChecksReadService entityDatatableChecksReadService;
 
@@ -116,10 +120,28 @@ public class ClientTemplateReadPlatformServiceImpl implements ClientTemplateRead
         final List<DatatableData> datatableTemplates = this.entityDatatableChecksReadService.retrieveTemplates(StatusEnum.CREATE.getValue(),
                 EntityTables.CLIENT.getName(), null);
 
-        return ClientData.template(defaultOfficeId, LocalDate.now(DateUtils.getDateTimeZoneOfTenant()), offices, staffOptions, null,
-                genderOptions, savingsProductDatas, clientTypeOptions, clientClassificationOptions, clientNonPersonConstitutionOptions,
-                clientNonPersonMainBusinessLineOptions, clientLegalFormOptions, familyMemberOptions,
+        final ClientData clientData = ClientData.template(defaultOfficeId, LocalDate.now(DateUtils.getDateTimeZoneOfTenant()), offices,
+                staffOptions, null, genderOptions, savingsProductDatas, clientTypeOptions, clientClassificationOptions,
+                clientNonPersonConstitutionOptions, clientNonPersonMainBusinessLineOptions, clientLegalFormOptions, familyMemberOptions,
                 new ArrayList<AddressData>(Arrays.asList(address)), isAddressEnabled, datatableTemplates);
+
+        // Populate recurring deposit product options
+        clientData.setRecurringDepositProductOptions(fetchRecurringDepositProductOptions());
+
+        return clientData;
+    }
+
+
+    private Collection<SavingsProductData> fetchRecurringDepositProductOptions() {
+        final Collection<DepositProductData> rdProducts = this.depositProductReadPlatformService
+                .retrieveAllForLookup(DepositAccountType.RECURRING_DEPOSIT);
+        final List<SavingsProductData> rdProductOptions = new ArrayList<>();
+        if (rdProducts != null) {
+            for (final DepositProductData rdProduct : rdProducts) {
+                rdProductOptions.add(SavingsProductData.lookup(rdProduct.getId(), rdProduct.getName()));
+            }
+        }
+        return rdProductOptions;
     }
 
     private Long defaultToUsersOfficeIfNull(final Long officeId) {

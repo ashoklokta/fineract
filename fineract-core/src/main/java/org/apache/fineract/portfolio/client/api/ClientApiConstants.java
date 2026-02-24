@@ -105,6 +105,11 @@ public class ClientApiConstants {
     public static final String submittedOnDateParamName = "submittedOnDate";
     public static final String savingsProductIdParamName = "savingsProductId";
     public static final String savingsAccountIdParamName = "savingsAccountId";
+    public static final String recurringDepositProductIdParamName = "recurringDepositProductId";
+    public static final String rdDepositAmountParamName = "rdDepositAmount";
+    public static final String rdDepositPeriodParamName = "rdDepositPeriod";
+    public static final String rdDepositPeriodFrequencyIdParamName = "rdDepositPeriodFrequencyId";
+    public static final String rdExpectedFirstDepositOnDateParamName = "rdExpectedFirstDepositOnDate";
     public static final String dateOfBirthParamName = "dateOfBirth";
     public static final String genderIdParamName = "genderId";
     public static final String genderParamName = "gender";

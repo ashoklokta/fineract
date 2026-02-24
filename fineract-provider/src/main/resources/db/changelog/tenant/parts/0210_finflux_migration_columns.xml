@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SECDEP Finflux Migration: Add 21 Finflux-specific columns to Fineract schema.
+  These columns preserve Finflux data that has no equivalent in standard Fineract.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <!-- 1. m_mandatory_savings_schedule.actualduedate -->
+    <changeSet id="finflux-migration-001" author="secdep">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="m_mandatory_savings_schedule" columnName="actualduedate"/></not>
+        </preConditions>
+        <addColumn tableName="m_mandatory_savings_schedule">
+            <column name="actualduedate" type="DATE"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- 2. m_loan_repayment_schedule.capitalized_charge_amount -->
+    <changeSet id="finflux-migration-002" author="secdep">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="m_loan_repayment_schedule" columnName="capitalized_charge_amount"/></not>
+        </preConditions>
+        <addColumn tableName="m_loan_repayment_schedule">
+            <column name="capitalized_charge_amount" type="NUMERIC"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- 3. m_calendar_instance.start_date -->
+    <changeSet id="finflux-migration-003" author="secdep">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="m_calendar_instance" columnName="start_date"/></not>
+        </preConditions>
+        <addColumn tableName="m_calendar_instance">
+            <column name="start_date" type="DATE"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- 4. m_calendar_history.is_active -->
+    <changeSet id="finflux-migration-004" author="secdep">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="m_calendar_history" columnName="is_active"/></not>
+        </preConditions>
+        <addColumn tableName="m_calendar_history">
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <!-- 5. m_calendar.next_recurring_date -->
+    <changeSet id="finflux-migration-005" author="secdep">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="m_calendar" columnName="next_recurring_date"/></not>
+        </preConditions>
+        <addColumn tableName="m_calendar">
+            <column name="next_recurring_date" type="DATE"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- 6. acc_product_mapping.code_value_cv_id -->
+    <changeSet id="finflux-migration-006" author="secdep">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="acc_product_mapping" columnName="code_value_cv_id"/></not>
+        </preConditions>
+        <addColumn tableName="acc_product_mapping">
+            <column name="code_value_cv_id" type="INTEGER"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- 7. acc_gl_account.gl_classification_type -->
+    <changeSet id="finflux-migration-007" author="secdep">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="acc_gl_account" columnName="gl_classification_type"/></not>
+        </preConditions>
+        <addColumn tableName="acc_gl_account">
+            <column name="gl_classification_type" type="INTEGER"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- 8-9. m_code_value.parent_id, system_identifier -->
+    <changeSet id="finflux-migration-008" author="secdep">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="m_code_value" columnName="parent_id"/></not>
+        </preConditions>
+        <addColumn tableName="m_code_value">
+            <column name="parent_id" type="INTEGER"/>
+            <column name="system_identifier" type="VARCHAR(5)"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- 10. m_code.parent_id -->
+    <changeSet id="finflux-migration-009" author="secdep">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="m_code" columnName="parent_id"/></not>
+        </preConditions>
+        <addColumn tableName="m_code">
+            <column name="parent_id" type="INTEGER"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- 11. r_enum_value.enum_key -->
+    <changeSet id="finflux-migration-010" author="secdep">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="r_enum_value" columnName="enum_key"/></not>
+        </preConditions>
+        <addColumn tableName="r_enum_value">
+            <column name="enum_key" type="VARCHAR(100)"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- 12-15. m_client_charge tax columns -->
+    <changeSet id="finflux-migration-011" author="secdep">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="m_client_charge" columnName="amount_sans_tax"/></not>
+        </preConditions>
+        <addColumn tableName="m_client_charge">
+            <column name="amount_sans_tax" type="NUMERIC"/>
+            <column name="tax_amount" type="NUMERIC"/>
+            <column name="amount_paid_derived_sans_tax" type="NUMERIC"/>
+            <column name="amount_outstanding_derived_sans_tax" type="NUMERIC"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- 16. stretchy_report.track_usage -->
+    <changeSet id="finflux-migration-012" author="secdep">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="stretchy_report" columnName="track_usage"/></not>
+        </preConditions>
+        <addColumn tableName="stretchy_report">
+            <column name="track_usage" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <!-- 17. stretchy_parameter.input_name -->
+    <changeSet id="finflux-migration-013a" author="secdep">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="stretchy_parameter" columnName="input_name"/></not>
+        </preConditions>
+        <addColumn tableName="stretchy_parameter">
+            <column name="input_name" type="VARCHAR(100)"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- 18. stretchy_parameter.selectAll (may already exist in Fineract) -->
+    <changeSet id="finflux-migration-013b" author="secdep">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="stretchy_parameter" columnName="selectAll"/></not>
+        </preConditions>
+        <addColumn tableName="stretchy_parameter">
+            <column name="selectAll" type="VARCHAR(255)"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- 19. stretchy_parameter.selectOne (may already exist in Fineract) -->
+    <changeSet id="finflux-migration-013c" author="secdep">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="stretchy_parameter" columnName="selectOne"/></not>
+        </preConditions>
+        <addColumn tableName="stretchy_parameter">
+            <column name="selectOne" type="VARCHAR(255)"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- 20. stretchy_parameter.string_value -->
+    <changeSet id="finflux-migration-013d" author="secdep">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="stretchy_parameter" columnName="string_value"/></not>
+        </preConditions>
+        <addColumn tableName="stretchy_parameter">
+            <column name="string_value" type="VARCHAR(100)"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- 21. m_savings_account_transaction.appuser_id -->
+    <changeSet id="finflux-migration-014" author="secdep">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="m_savings_account_transaction" columnName="appuser_id"/></not>
+        </preConditions>
+        <addColumn tableName="m_savings_account_transaction">
+            <column name="appuser_id" type="BIGINT"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- Collection sheet tables for SECDEP -->
+    <changeSet id="finflux-migration-015" author="secdep">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="collection_sheet"/></not>
+        </preConditions>
+        <createTable tableName="collection_sheet">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="office_id" type="BIGINT"/>
+            <column name="staff_id" type="BIGINT"/>
+            <column name="group_id" type="BIGINT"/>
+            <column name="center_id" type="BIGINT"/>
+            <column name="meeting_date" type="DATE"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="finflux-migration-016" author="secdep">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="collection_sheet_transaction_details"/></not>
+        </preConditions>
+        <createTable tableName="collection_sheet_transaction_details">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="collection_sheet_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_cstd_collection_sheet" references="collection_sheet(id)"/>
+            </column>
+            <column name="entity_id" type="BIGINT"/>
+            <column name="entity_type_enum" type="SMALLINT"/>
+            <column name="transaction_id" type="BIGINT"/>
+            <column name="transaction_status" type="SMALLINT"/>
+            <column name="error_message" type="VARCHAR(500)"/>
+        </createTable>
+        <createIndex tableName="collection_sheet_transaction_details" indexName="idx_cstd_collection_sheet">
+            <column name="collection_sheet_id"/>
+        </createIndex>
+        <createIndex tableName="collection_sheet_transaction_details" indexName="idx_cstd_entity">
+            <column name="entity_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

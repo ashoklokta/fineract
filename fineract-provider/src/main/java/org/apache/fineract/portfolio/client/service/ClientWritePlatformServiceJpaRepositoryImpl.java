@@ -19,7 +19,10 @@
 package org.apache.fineract.portfolio.client.service;
 
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import jakarta.persistence.PersistenceException;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
@@ -84,11 +87,14 @@ import org.apache.fineract.portfolio.loanaccount.domain.Loan;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanRepositoryWrapper;
 import org.apache.fineract.portfolio.note.domain.Note;
 import org.apache.fineract.portfolio.note.domain.NoteRepository;
+import org.apache.fineract.portfolio.savings.DepositAccountType;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountDataDTO;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountRepositoryWrapper;
 import org.apache.fineract.portfolio.savings.domain.SavingsProductRepository;
 import org.apache.fineract.portfolio.savings.exception.SavingsProductNotFoundException;
+import org.apache.fineract.portfolio.savings.service.DepositAccountWritePlatformService;
+import org.apache.fineract.portfolio.savings.service.DepositApplicationProcessWritePlatformService;
 import org.apache.fineract.portfolio.savings.service.SavingsApplicationProcessWritePlatformService;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -124,6 +130,8 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
     private final BusinessEventNotifierService businessEventNotifierService;
     private final EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService;
     private final ExternalIdFactory externalIdFactory;
+    private final DepositApplicationProcessWritePlatformService depositApplicationProcessWritePlatformService;
+    private final DepositAccountWritePlatformService depositAccountWritePlatformService;
 
     @Transactional
     @Override
@@ -235,6 +243,9 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                         .orElseThrow(() -> new SavingsProductNotFoundException(savingsProductId));
             }
 
+            final Long recurringDepositProductId = command
+                    .longValueOfParameterNamed(ClientApiConstants.recurringDepositProductIdParamName);
+
             boolean isEntity = false;
             LegalForm legalForm = null;
             final Integer legalFormParamValue = command.integerValueOfParameterNamed(ClientApiConstants.legalFormIdParamName);
@@ -288,6 +299,11 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                     savingsProductId, savingsAccountId, dataOfBirth, gender, clientType, clientClassification, legalForm.getValue(),
                     isStaff);
 
+            // Set recurring deposit product if provided
+            if (recurringDepositProductId != null) {
+                newClient.updateRecurringDepositProduct(recurringDepositProductId);
+            }
+
             // Account Number generation
             this.clientRepository.saveAndFlush(newClient);
             if (StringUtils.isBlank(accountNo)) {
@@ -311,6 +327,9 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             if (result.getSavingsId() != null) {
                 this.clientRepository.saveAndFlush(newClient);
             }
+
+            // Auto-create RD account if RD product was selected
+            openRecurringDepositAccount(newClient, command, fmt);
 
             if (isEntity) {
                 extractAndCreateClientNonPerson(newClient, command);
@@ -486,6 +505,12 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                 changes.put(ClientApiConstants.savingsProductIdParamName, newValue);
             }
 
+            if (command.isChangeInLongParameterNamed(ClientApiConstants.recurringDepositProductIdParamName,
+                    clientForUpdate.recurringDepositProductId())) {
+                final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.recurringDepositProductIdParamName);
+                changes.put(ClientApiConstants.recurringDepositProductIdParamName, newValue);
+            }
+
             if (command.isChangeInLongParameterNamed(ClientApiConstants.clientTypeIdParamName, clientForUpdate.clientTypeId())) {
                 final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.clientTypeIdParamName);
                 changes.put(ClientApiConstants.clientTypeIdParamName, newValue);
@@ -583,6 +608,14 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                             .orElseThrow(() -> new SavingsProductNotFoundException(savingsProductId));
                 }
                 clientForUpdate.updateSavingsProduct(savingsProductId);
+            }
+
+            if (changes.containsKey(ClientApiConstants.recurringDepositProductIdParamName)) {
+                if (clientForUpdate.isActive()) {
+                    throw new ClientActiveForUpdateException(clientId, ClientApiConstants.recurringDepositProductIdParamName);
+                }
+                final Long rdProductId = command.longValueOfParameterNamed(ClientApiConstants.recurringDepositProductIdParamName);
+                clientForUpdate.updateRecurringDepositProduct(rdProductId);
             }
 
             if (changes.containsKey(ClientApiConstants.genderIdParamName)) {
@@ -721,6 +754,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             final AppUser currentUser = this.context.authenticatedUser();
             client.activate(currentUser, fmt, activationDate);
             CommandProcessingResult result = openSavingsAccount(client, fmt);
+            openRecurringDepositAccount(client, command, fmt);
             clientRepository.saveAndFlush(client);
             businessEventNotifierService.notifyPostBusinessEvent(new ClientActivateBusinessEvent(client));
             return new CommandProcessingResultBuilder() //
@@ -751,6 +785,86 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             }
         }
         return commandProcessingResult;
+    }
+
+    private void openRecurringDepositAccount(final Client client, final JsonCommand originalCommand, final DateTimeFormatter fmt) {
+        if (!client.isActive() || client.recurringDepositProductId() == null) {
+            return;
+        }
+
+        final String formattedDate = fmt.format(client.getActivationDate());
+
+        // Build JSON for RD application
+        final JsonObject rdJson = new JsonObject();
+        rdJson.addProperty("clientId", client.getId());
+        rdJson.addProperty("productId", client.recurringDepositProductId());
+        rdJson.addProperty("locale", "en");
+        rdJson.addProperty("dateFormat", "dd MMMM yyyy");
+        rdJson.addProperty("submittedOnDate", formattedDate);
+
+        // Deposit amount
+        final BigDecimal depositAmount = originalCommand.bigDecimalValueOfParameterNamed(ClientApiConstants.rdDepositAmountParamName);
+        if (depositAmount != null) {
+            rdJson.addProperty("mandatoryRecommendedDepositAmount", depositAmount);
+            rdJson.addProperty("depositAmount", depositAmount);
+        }
+
+        // Deposit period and frequency
+        final Integer depositPeriod = originalCommand.integerValueSansLocaleOfParameterNamed(ClientApiConstants.rdDepositPeriodParamName);
+        if (depositPeriod != null) {
+            rdJson.addProperty("depositPeriod", depositPeriod);
+        }
+        final Integer depositPeriodFreqId = originalCommand
+                .integerValueSansLocaleOfParameterNamed(ClientApiConstants.rdDepositPeriodFrequencyIdParamName);
+        if (depositPeriodFreqId != null) {
+            rdJson.addProperty("depositPeriodFrequencyId", depositPeriodFreqId);
+        }
+
+        // Calendar settings for individual client
+        rdJson.addProperty("isCalendarInherited", false);
+        rdJson.addProperty("recurringFrequency", 1);
+        rdJson.addProperty("recurringFrequencyType", 2); // Monthly
+
+        // Expected first deposit date
+        if (originalCommand.parameterExists(ClientApiConstants.rdExpectedFirstDepositOnDateParamName)) {
+            rdJson.addProperty("expectedFirstDepositOnDate",
+                    originalCommand.stringValueOfParameterNamed(ClientApiConstants.rdExpectedFirstDepositOnDateParamName));
+        }
+
+        // Step 1: Submit RD application
+        final JsonElement parsedElement = JsonParser.parseString(rdJson.toString());
+        final JsonCommand rdCommand = JsonCommand.from(rdJson.toString(), parsedElement, this.fromApiJsonHelper,
+                "RECURRINGDEPOSITACCOUNT", null, null, null, client.getId(), null, null, null, null, null, null, null, null,
+                ExternalId.empty());
+
+        final CommandProcessingResult submitResult = this.depositApplicationProcessWritePlatformService.submitRDApplication(rdCommand);
+        final Long rdAccountId = submitResult.getSavingsId();
+
+        // Step 2: Approve RD application
+        final JsonObject approveJson = new JsonObject();
+        approveJson.addProperty("approvedOnDate", formattedDate);
+        approveJson.addProperty("locale", "en");
+        approveJson.addProperty("dateFormat", "dd MMMM yyyy");
+        final JsonElement approveElement = JsonParser.parseString(approveJson.toString());
+        final JsonCommand approveCommand = JsonCommand.from(approveJson.toString(), approveElement, this.fromApiJsonHelper,
+                "RECURRINGDEPOSITACCOUNT", rdAccountId, null, null, null, null, null, null, null, null, null, null, null,
+                ExternalId.empty());
+        this.depositApplicationProcessWritePlatformService.approveApplication(rdAccountId, approveCommand,
+                DepositAccountType.RECURRING_DEPOSIT);
+
+        // Step 3: Activate RD account
+        final JsonObject activateJson = new JsonObject();
+        activateJson.addProperty("activatedOnDate", formattedDate);
+        activateJson.addProperty("locale", "en");
+        activateJson.addProperty("dateFormat", "dd MMMM yyyy");
+        final JsonElement activateElement = JsonParser.parseString(activateJson.toString());
+        final JsonCommand activateCommand = JsonCommand.from(activateJson.toString(), activateElement, this.fromApiJsonHelper,
+                "RECURRINGDEPOSITACCOUNT", rdAccountId, null, null, null, null, null, null, null, null, null, null, null,
+                ExternalId.empty());
+        this.depositAccountWritePlatformService.activateRDAccount(rdAccountId, activateCommand);
+
+        // Clear the RD product from client (same pattern as savings)
+        client.updateRecurringDepositProduct(null);
     }
 
     private void logAsErrorUnexpectedDataIntegrityException(final Exception dve) {

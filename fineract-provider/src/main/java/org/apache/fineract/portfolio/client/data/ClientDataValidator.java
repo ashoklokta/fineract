@@ -104,14 +104,13 @@ public final class ClientDataValidator {
             final Long savingsProductId = this.fromApiJsonHelper.extractLongNamed(ClientApiConstants.savingsProductIdParamName, element);
             baseDataValidator.reset().parameter(ClientApiConstants.savingsProductIdParamName).value(savingsProductId).ignoreIfNull()
                     .longGreaterThanZero();
-            /*
-             * if (savingsProductId != null && this.fromApiJsonHelper.parameterExists(ClientApiConstants. datatables,
-             * element)) { final JsonArray datatables = this.fromApiJsonHelper.extractJsonArrayNamed(ClientApiConstants.
-             * datatables, element); if (datatables.size() > 0) {
-             * baseDataValidator.reset().parameter(ClientApiConstants.
-             * savingsProductIdParamName).value(savingsProductId) .failWithCodeNoParameterAddedToErrorCode(
-             * "should.not.be.used.with.datatables.parameter"); } }
-             */
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.recurringDepositProductIdParamName, element)) {
+            final Long recurringDepositProductId = this.fromApiJsonHelper
+                    .extractLongNamed(ClientApiConstants.recurringDepositProductIdParamName, element);
+            baseDataValidator.reset().parameter(ClientApiConstants.recurringDepositProductIdParamName).value(recurringDepositProductId)
+                    .ignoreIfNull().longGreaterThanZero();
         }
 
         if (isFullnameProvided(element) || isIndividualNameProvided(element)) {
@@ -464,6 +463,14 @@ public final class ClientDataValidator {
             final Long savingsProductId = this.fromApiJsonHelper.extractLongNamed(ClientApiConstants.savingsProductIdParamName, element);
             baseDataValidator.reset().parameter(ClientApiConstants.savingsProductIdParamName).value(savingsProductId).ignoreIfNull()
                     .longGreaterThanZero();
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.recurringDepositProductIdParamName, element)) {
+            atLeastOneParameterPassedForUpdate = true;
+            final Long recurringDepositProductId = this.fromApiJsonHelper
+                    .extractLongNamed(ClientApiConstants.recurringDepositProductIdParamName, element);
+            baseDataValidator.reset().parameter(ClientApiConstants.recurringDepositProductIdParamName).value(recurringDepositProductId)
+                    .ignoreIfNull().longGreaterThanZero();
         }
 
         if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.genderIdParamName, element)) {

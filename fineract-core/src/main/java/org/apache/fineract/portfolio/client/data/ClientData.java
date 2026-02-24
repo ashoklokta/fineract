@@ -88,6 +88,10 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
 
     private Long savingsAccountId;
     private EnumOptionData legalForm;
+
+    private Long recurringDepositProductId;
+    private String recurringDepositProductName;
+
     private Set<ClientCollateralManagementData> clientCollateralManagements;
 
     // associations
@@ -99,6 +103,7 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
     private Collection<CodeValueData> narrations;
     private Collection<SavingsProductData> savingProductOptions;
     private Collection<SavingsAccountData> savingAccountOptions;
+    private Collection<SavingsProductData> recurringDepositProductOptions;
     private Collection<CodeValueData> genderOptions;
     private Collection<CodeValueData> clientTypeOptions;
     private Collection<CodeValueData> clientClassificationOptions;
